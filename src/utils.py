@@ -11,7 +11,7 @@ def generateColors(N):
     """ generate N colors.
     Source: https://stackoverflow.com/questions/876853/generating-color-ranges-in-python
     """
-    colors = np.linspace(0,1,N+2)
+    colors = np.linspace(0,100,N+2, dtype=int)
     # Remove 0 and 1
     colors = np.delete(colors,[0, -1])
 

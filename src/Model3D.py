@@ -15,8 +15,6 @@ os.environ["QT_API"] = "pyside2"
 from qtpy.QtCore import QTimer
 
 from brushes import PickerBrush, LiveBrush
-from loadsave import save_data, load_data
-
 
 
 class Model3D():
@@ -47,22 +45,33 @@ class Model3D():
         # Initialize regions with float64 0 values
         #self.mesh.cell_data['regions'] = np.zeros(self.mesh.n_cells)
         if regions is None:
-            self.mesh.cell_data['regions'] = np.zeros(self.mesh.n_cells)
+            self.regions = np.zeros(self.mesh.n_cells)
         else:
-            self.mesh.cell_data['regions'] = regions
+            self.regions = regions
+            
+        # Regions contain the user-selected regions, while mesh.cell_data 
+        # contains regions and hovering mouse
+        self.mesh.cell_data['regions'] = np.copy(self.regions)
 
-
-        self.plotter.add_mesh(self.mesh, clim = [0,1], show_edges=False,
-                              opacity=1, lighting=True, label="Main Mesh")
+        self.plotter.add_mesh(self.mesh, 
+                              clim = [0,100], 
+                              show_edges=False,
+                              opacity=1, 
+                              lighting=True, 
+                              label="Main Mesh")
 
         self.plotter.remove_scalar_bar()
 
         # Brushes
-        self.picker = None  # Picker(self.plotter, self.mesh, self.name, self.color)
-        self.brush = LiveBrush(self.plotter, self.mesh)  # highlights the region below the mouse
+        self.picker = None  # This will be used to pick regions
+        self.brush = LiveBrush(self, self.mesh)  # highlights the region below the mouse
 
         self.plotter.track_mouse_position()  #  Starts tracking mouse
-        self.add_callback(self.brush, 100)  # Mouse hovering updated every 100 ms
+        
+        # Mouse hovering updated every 100 ms. I did not see much improvement 
+        # with higher frequency because, on my PC, ray tracing with pyvista 
+        # can take ~45 ms with a medium mesh (250.000 cells)
+        self.add_callback(self.brush, 100)  
 
 
     def createPicker(self, name, color, radius = 100):

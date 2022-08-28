@@ -74,11 +74,11 @@ class RayTracer():
         if pts_indexes is None:
             return []
         
-        # Get the attached cells
-        self.hovered_region = self.mesh.extract_points(pts_indexes)        
-        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']
-
+        # Get the attached cells; this is a mesh with new cell numbering
+        self.hovered_region = self.mesh.extract_points(pts_indexes)    
         
+        # This gives us the original cell numbering
+        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']
 
         return picked_cells_indexes
 
@@ -92,12 +92,13 @@ class PickerBrush(RayTracer):
 
         self.color = color
         self.name = name
+        self.parent = parent
 
     
     def __call__(self, *args):
         """ This is called by the plotter on mouse move. It changes the color of the
-            cells where the mouse is hovering over. The "color" is a float value between 
-            0 and 1 (excluded). 
+            cells where the mouse is hovering over. The "color" identifies a 
+            region, and it is a float value between 0 and 100 (excluded). 
             Cells are added to the selection if SHIFT is pressed, removed if CTRL. """
         
         # Return is SHIFT or CTRL are not pressed
@@ -110,27 +111,19 @@ class PickerBrush(RayTracer):
         if self.current_point == self.plotter.pick_mouse_position():
             return
         
-        
-        # Find stabbing point
+        # Find stabbing point and cells around it
         cell_indexes = self.FindCellRegion()
         
-        # transform in boolean indexing
-        mask = np.zeros(self.mesh.n_cells, dtype=bool)
-        mask[cell_indexes] = True
-        
-        
-        # Change value of cell_data for hovered cells
-        data = self.mesh.cell_data['regions']  # np.zeros(self.mesh.n_cells)
-
         # Check if user wants to add or remove points
         if modifiers == QtCore.Qt.ControlModifier:
             # Remove cells
-            data[mask] = 0
+            self.parent.regions[cell_indexes] = 0
         else:
             # Add cells
-            data[mask] = self.color
+            self.parent.regions[cell_indexes] = self.color
     
-        self.plotter.update_scalars(data, mesh=self.mesh)
+        # Update colors
+        self.plotter.update_scalars(self.parent.regions, mesh=self.mesh)
 
 
 
@@ -138,16 +131,16 @@ class LiveBrush(RayTracer):
     """ Plots a spot with specific radius on the 3D model below the mous pointer """
     
 
-    def __init__(self, plotter, mesh, radius = 100):
-        super().__init__(plotter, mesh, radius)
+    def __init__(self, parent, mesh, radius = 100):
+        super().__init__(parent.plotter, mesh, radius)
 
-        self.plotter = plotter
+        self.parent = parent
         self.current_point = None
 
         self.hovered_region = pv.UnstructuredGrid()
         self.hovered_indexes = []
         self.actor = None  # This is the actual rendered mesh
-
+ 
 
     def __call__(self):
         """ Brushing the model below the mouse hovering regions uses the mesh's 
@@ -155,7 +148,6 @@ class LiveBrush(RayTracer):
         for every cell. The values below the mouse are changed to one, and 
         back to zero when the mouse leaves.
         Values between zero and one codify the different regions.
-        
         """
         
         # Avoid replotting if mouse did not move
@@ -168,30 +160,19 @@ class LiveBrush(RayTracer):
             # the hovering brush.
             # But first, remove the last cells where mouse was hovering
             data = self.mesh.cell_data['regions']
-            data[data == 1] = 0.0  # Reset old hovering
+            data[data == 1] = 0  # Reset old hovering
             self.plotter.update_scalars(data, mesh=self.mesh)
             
             return
         
 
-        # Find stabbing point
+        # Find stabbing point and cells around it
         cell_indexes = self.FindCellRegion()
         
-        # transform in boolean indexing
-        mask = np.zeros(self.mesh.n_cells, dtype=bool)
-        mask[cell_indexes] = True
+        # Retrieve already defined regions, and use values as colors
+        coloring = np.copy(self.parent.regions)
         
-        # points that are not zero represent regions; don't want to change those
-        mask[np.bitwise_and(self.mesh.cell_data['regions'] > 0,
-                            self.mesh.cell_data['regions'] < 1)] = False
+        # Add cell coloring
+        coloring[cell_indexes] = 100
         
-        
-        # Change value of cell_data for hovered cells
-        data = self.mesh.cell_data['regions']  # np.zeros(self.mesh.n_cells)
-        data[data == 1] = 0.0  # Reset old hovering
-        data[mask] = 1.0       # Current hovering
-
-        self.plotter.update_scalars(data, mesh=self.mesh)
-        #self.plotter.render()
-
-
+        self.plotter.update_scalars(coloring, mesh=self.mesh)
