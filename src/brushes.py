@@ -74,11 +74,11 @@ class RayTracer():
         if pts_indexes is None:
             return []
         
-        # Get the attached cells
-        self.hovered_region = self.mesh.extract_points(pts_indexes)        
-        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']
-
+        # Get the attached cells; this is a mesh with new cell numbering
+        self.hovered_region = self.mesh.extract_points(pts_indexes)    
         
+        # This gives us the original cell numbering
+        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']
 
         return picked_cells_indexes
 
@@ -174,4 +174,5 @@ class LiveBrush(RayTracer):
         
         # Add cell coloring
         coloring[cell_indexes] = 100
+        
         self.plotter.update_scalars(coloring, mesh=self.mesh)

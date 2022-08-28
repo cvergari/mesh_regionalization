@@ -68,8 +68,10 @@ class Model3D():
 
         self.plotter.track_mouse_position()  #  Starts tracking mouse
         
-        # Mouse hovering updated every 50 ms. I did not see much improvement with higher frequency
-        self.add_callback(self.brush, 50)  
+        # Mouse hovering updated every 100 ms. I did not see much improvement 
+        # with higher frequency because, on my PC, ray tracing with pyvista 
+        # can take ~45 ms with a medium mesh (250.000 cells)
+        self.add_callback(self.brush, 100)  
 
 
     def createPicker(self, name, color, radius = 100):
