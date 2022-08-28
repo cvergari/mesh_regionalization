@@ -12,8 +12,6 @@ import numpy as np
 import pyvista as pv
 from os import path
 
-import os
-
 
 def save_data(data, out_file):
 
@@ -44,18 +42,18 @@ def load_data(filepath):
             if file.lower().endswith('.stl'):
                 # it is a 3D model
                 var_name = file[:-len('.stl')]  # remove extension
-                filename = os.path.join(tmp_dir.name, file)
+                filename = path.join(tmp_dir.name, file)
                 data[var_name] = pv.read(filename)
 
             elif file.lower().endswith('.dict'):
                 var_name = file[:-len('.dict')]  # remove extension
-                filename = os.path.join(tmp_dir.name, file)
+                filename = path.join(tmp_dir.name, file)
                 data[var_name]  = json.load( open(filename, encoding="utf8") )
                 #data[var_name] = json.load(open(filename, 'r'), encoding="utf8")
 
             elif file.lower().endswith('.array'):
                 var_name = file[:-len('.array')]  # remove extension
-                filename = os.path.join(tmp_dir.name, file)
+                filename = path.join(tmp_dir.name, file)
                 data[var_name]  = np.loadtxt(filename)
                 #data[var_name] = json.load(open(filename, 'r'), encoding="utf8")
 
@@ -73,7 +71,7 @@ def dump_file(data):
 
     files_list = []
     for key, value in data.items():
-        tmp_file = os.path.join(tmp_dir.name, key)
+        tmp_file = path.join(tmp_dir.name, key)
 
         if isinstance(value, str):
             pass
@@ -100,26 +98,3 @@ def dump_file(data):
     return tmp_dir, files_list
 
 
-if __name__ == '__main__':
-    import pyvista as pv
-    from config import REGIONS, REGION_COLORS
-
-    pelvis_mesh_path = '../data/Bassin.stl'
-
-    mesh = pv.read(pelvis_mesh_path)
-    mesh.cell_data['regions'] = np.zeros(mesh.n_cells)
-
-    # data = {'mesh': mesh,
-    #         'regions': {},
-    #         }
-    data = {'mesh': mesh,
-            'regions': mesh.cell_data['regions'],
-            'region_data': REGION_COLORS
-            }
-
-
-    out_file = 'C:\\temp\\save.zip'
-
-    save_data(data, out_file)
-
-    data_out = load_data(out_file)

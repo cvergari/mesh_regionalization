@@ -6,11 +6,10 @@ from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QIcon
 
-sys.path.append('../qt_gui')
-from mainwindow import MainWindow
-from config import REGIONS, REGION_COLORS
-from Model3D import Model3D
-from loadsave import save_data, load_data
+from mesh_regionalization.qt_gui.mainwindow import MainWindow
+from .config import REGIONS, REGION_COLORS
+from .Model3D import Model3D
+from .loadsave import save_data, load_data
 
 
 class ToggleButton(QtWidgets.QPushButton):
@@ -33,7 +32,15 @@ class ToggleButton(QtWidgets.QPushButton):
 class AppWindow(MainWindow):
     """ Main window. This inherits from the GUI layout made with QT Editor """
 
-    def __init__(self):
+    def __init__(self, region_colors = None):
+        """ The gui can be initialized by passing a region_colors dictionnary, 
+        where the keys are the names of the region, and "colors" are integers between 0 and 100 (excluded).
+        For example:
+            region_colors = {'Region 1': 20, 'Region 2': 40, 'Region 3': 60, 'Region 4': 80}
+            
+        """
+    
+    
         super().__init__()
 
         self.last_save_file = None
@@ -46,10 +53,15 @@ class AppWindow(MainWindow):
         self.ui.ControlsLayout = QtWidgets.QGridLayout(self.ui.main_widget)
         self.ui.ControlsLayout.addWidget(self.ui.frame_controls,0,0, Qt.AlignRight  | Qt.AlignTop )
 
+
+        # Load regions
+        if not region_colors:
+            region_colors = REGION_COLORS
+
         # Create region buttons
         self.region_buttons = {}
-        for region in REGIONS:
-            btn = ToggleButton(title = region, color = REGION_COLORS[region])
+        for region, color in region_colors.items():
+            btn = ToggleButton(title = region, color = color)
 
             # Connect it to a callback gunction and pass the region name
             btn.clicked.connect(partial(self.region_button_callback, region))

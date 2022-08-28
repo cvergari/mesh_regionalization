@@ -1,5 +1,5 @@
 
-from utils import generateColors
+from .utils import generateColors
 
 
 REGIONS = ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'Region 6']

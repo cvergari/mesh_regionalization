@@ -14,7 +14,7 @@ import os
 os.environ["QT_API"] = "pyside2"
 from qtpy.QtCore import QTimer
 
-from brushes import PickerBrush, LiveBrush
+from .brushes import PickerBrush, LiveBrush
 
 
 class Model3D():
