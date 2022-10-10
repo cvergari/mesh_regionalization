@@ -27,7 +27,7 @@ class RayTracer():
         tuple
             point: 3D coordinates.
         int
-            index: index of the closest mesh node
+            index: index of the closest mesh cell
 
         """
             
@@ -45,9 +45,11 @@ class RayTracer():
         end = picked_pt + 100000 * direction
 
         # Ray tracing to find the first point hit on the mesh
-        point, index = self.mesh.ray_trace(start, end, first_point=True)
+        # point is a 3-coordinate array. Not necessarily corresponding 
+        # to a mesh point
+        point, cell_index = self.mesh.ray_trace(start, end, first_point=True)
 
-        return point, index
+        return point, cell_index
 
 
     def FindCellRegion(self):
@@ -64,23 +66,93 @@ class RayTracer():
         if not self.mesh:
             return []
 
-        point, index = self.FindPoint()
+        point, center_cell_index = self.FindPoint()
         if len(point) == 0:
             # Mouse outside model
             return []
+        
+        center_cell_index = center_cell_index[0] # This is always a list, take 1st element
 
-        pts_indexes = self.mesh.find_closest_point(point, self.radius)
+        #pts_indexes = self.mesh.find_closest_point(point, self.radius)  # "radius" is in number of cells
+
+        # This is faster than using mesh.find_closest_point():
+        _, pts_indexes = self.parent.tree.query(point.reshape(1,3), self.radius)
 
         if pts_indexes is None:
             return []
         
-        # Get the attached cells; this is a mesh with new cell numbering
-        self.hovered_region = self.mesh.extract_points(pts_indexes)    
+        # Function will return a list of lists
+        pts_indexes = pts_indexes[0]
         
-        # This gives us the original cell numbering
-        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']
+
+        # Get the cells attached  to points; this is a mesh with new cell numbering
+        self.hovered_region = self.mesh.extract_points(pts_indexes)    
+        # Get the original cell numbering
+        picked_cells_indexes = self.hovered_region.cell_data['vtkOriginalCellIds']        
+        
+        
+        # Check if multiple connected surfaces are seleccted; this means some 
+        # cells are on the opposite side of the surface. It can occur if the 
+        # surface is thin and the opposite surface is too close. We have to 
+        # remove those spurious selections!
+        connectivity = self.hovered_region.connectivity(largest=False)
+
+        # If there are more than one region ids, there are unconnected surfaces...
+        # deal with it
+        regions_id_range = [np.min(connectivity.cell_data['RegionId']), 
+                            np.max(connectivity.cell_data['RegionId'])]
+        if not  regions_id_range[0] == regions_id_range[1]:
+            picked_cells_indexes = keep_region_containing_cell(connectivity, 
+                                                               regions_id_range, 
+                                                               center_cell_index)
+
 
         return picked_cells_indexes
+
+
+
+def keep_region_containing_cell(regions, regions_id_range, center_cell_index):
+    """ keep_region_containing_cell(regions, regions_id_range, center_cell_index)
+        
+        *regions* is a mesh issuing from a manual selection. If the surface is thin,
+        the selection could be partially on the other side of the mesh. These
+        regions should have different ids (listed in *regions_id_range*).
+        
+        However, the central cell (*center_cell_index*) should be on the 
+        correct side because it was selected with the ray tracing method.
+        
+        
+        Attributes
+        ----------
+        mesh
+           regions: a mesh issued from the connectiity() function. It should have 
+                    a 'RegionId' cell_data property.
+        list of ints
+            regions_id_range: a list of possible region IDs, e.g. [0, 1] for two regions
+        int
+            center_cell_index: index of the center cell of the manual selection
+
+        Returns
+        ----------
+        list
+            indexes: list of indexes of retained cells (the group containing 
+                     the central cell)
+        
+        
+    """
+    
+    region_ids = regions.cell_data['RegionId']
+    
+    for region_id in regions_id_range:
+        indexes = regions.cell_data['vtkOriginalCellIds'][region_ids == region_id]
+        
+        if center_cell_index in indexes:
+            return indexes
+    
+    raise Exception('There was an error when brushing the surface; the '
+                    'hovered surface was composed of unconnected surfaces, but'
+                    'I could not determine which was the one to retain!')
+    
 
 
 

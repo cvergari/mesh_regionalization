@@ -9,6 +9,7 @@ Created on Thu Jul 28 09:28:01 2022
 import pyvista as pv
 import pyvistaqt as pvqt
 import numpy as np
+from pykdtree.kdtree import KDTree
 
 import os
 os.environ["QT_API"] = "pyside2"
@@ -62,6 +63,10 @@ class Model3D():
 
         self.plotter.remove_scalar_bar()
 
+        # Precompute KD tree, which will be used 
+        # to measure distances between points
+        self.tree = KDTree(self.mesh.points.astype(np.double))
+
         # Brushes
         self.picker = None  # This will be used to pick regions
         self.brush = LiveBrush(self, self.mesh)  # highlights the region below the mouse
@@ -71,7 +76,7 @@ class Model3D():
         # Mouse hovering updated every 100 ms. I did not see much improvement 
         # with higher frequency because, on my PC, ray tracing with pyvista 
         # can take ~45 ms with a medium mesh (250.000 cells)
-        self.add_callback(self.brush, 100)  
+        self.add_callback(self.brush, 100)          
 
 
     def createPicker(self, name, color, radius = 100):
@@ -121,7 +126,8 @@ class Model3D():
 
 if __name__ == "__main__":
 
-    pelvis_mesh_path = '../data/Bassin.stl'
+    # Load a sample mesh for debugging55
+    mesh_path = '../data/skull.stl'
 
-    selector = Model3D(parent = None, mesh = pelvis_mesh_path)
+    selector = Model3D(parent = None, mesh = mesh_path)
     selector.plotter.app.exec_()
